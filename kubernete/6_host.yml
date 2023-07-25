@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host-deployment
+  labels:
+    app: host
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: host
+  template:
+    metadata:
+      labels:
+        app: host
+    spec:
+      containers:
+        - name: host
+          image: tonyyou998/host-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: tonyyou998-configmap
+                  key: SPRING_PROFILES_ACTIVE
+            - name: SPRING_CONFIG_IMPORT
+              valueFrom:
+                configMapKeyRef:
+                  name: tonyyou998-configmap
+                  key: SPRING_CONFIG_IMPORT
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: tonyyou998-configmap
+                  key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://hostdb-service:3306/host_db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "1234"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: host-service
+spec:
+  selector:
+    app: host
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hostdb-deployment
+  labels:
+    app: hostdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hostdb
+  template:
+    metadata:
+      labels:
+        app: hostdb
+    spec:
+      containers:
+        - name: hostdb
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "1234"
+            - name: MYSQL_DATABASE
+              value: host_db
+            - name: MYSQL_PASSWORD
+              value: "1234"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostdb-service
+spec:
+  selector:
+    app: hostdb
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
